@@ -15,8 +15,8 @@ results_df = pd.read_pickle('class_reg_results_df.pkl')
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 
 def predict_with_all_models(models, scalers, input_data, results_df):
-    predictions_df = pd.DataFrame()
-    intervals_df = pd.DataFrame()
+    predictions_list = []
+    intervals_list = []
 
     for column_name in models.keys():
         model = models[column_name]
@@ -26,25 +26,27 @@ def predict_with_all_models(models, scalers, input_data, results_df):
 
         predictions = model.predict(input_data_scaled)
 
-        predictions_df[column_name] = predictions
+        predictions_list.append({'Name': column_name, 'Value': predictions[0]})
 
+        # Check if the model is a regression model
         if isinstance(model, RandomForestRegressor):
-            # Check if 'test_score' is available for this model
-            if column_name in results_df['column'].values:
-                mae = results_df.loc[results_df['column'] == column_name, 'test_score'].values[0]
-                lower_bound = predictions - mae
-                upper_bound = predictions + mae
-            else:
-                lower_bound = upper_bound = [np.nan] * len(predictions)
+            # Get the MAE for this model
+            mae = results_df.loc[results_df['column'] == column_name, 'test_score'].values[0]
 
-            intervals_df[column_name] = list(zip(lower_bound, upper_bound))
-        else:
-            intervals_df[column_name] = [(np.nan, np.nan)] * len(predictions)
+            # Compute the lower and upper bound of the predictions
+            lower_bound = predictions - mae
+            upper_bound = predictions + mae
+
+            # Add the intervals to the DataFrame
+            intervals_list.append({'Name': column_name, 'Lower': lower_bound[0], 'Upper': upper_bound[0]})
+
+    predictions_df = pd.DataFrame(predictions_list)
+    intervals_df = pd.DataFrame(intervals_list)
 
     return predictions_df, intervals_df
 
 # Create Streamlit inputs
-st.title('My Prediction App')
+st.title('Resin calculator')
 
 fazekido = st.number_input('Fazékidő (min):')
 szakitoszilardsag = st.number_input('Szakítószilárdság [MPa]:')
